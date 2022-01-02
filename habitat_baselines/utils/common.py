@@ -214,18 +214,25 @@ def batch_obs(
     if cache is None:
         batch: DefaultDict[str, List] = defaultdict(list)
 
+    observations_t = []
+    for obs in observations:
+        obs_item = {}
+        for key in obs.items():
+            obs_item[key] = np.array(obs[key])
+        observations_t.append(obs_item)
+    observations = observations_t
     obs = observations[0]
-    for key in obs.keys():
-        print(key, type(obs[key]))
-        if isinstance(obs[key], numbers.Number):
-            print(1)
-            # print(key, 1)
-        elif isinstance(obs[key], List):
-            # print(key, len(obs[key]))
-            print(len(obs[key]))
-        else:
-            # print(key)
-            print(obs[key].shape)
+    # for key in obs.keys():
+    #     print(key, type(obs[key]))
+    #     if isinstance(obs[key], numbers.Number):
+    #         print(1)
+    #         # print(key, 1)
+    #     elif isinstance(obs[key], List):
+    #         # print(key, len(obs[key]))
+    #         print(len(obs[key]))
+    #     else:
+    #         # print(key)
+    #         print(obs[key].shape)
     # Order sensors by size, stack and move the largest first
     sensor_names = sorted(
         obs.keys(),
