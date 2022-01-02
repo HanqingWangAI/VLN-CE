@@ -54,8 +54,8 @@ class TruncatedNormal(nn.Module):
         self._normal = Normal(loc, scale, validate_args=validate_args)
         self._loc = loc
         self._scale = scale
-        self._smin = torch.Tensor([smin], device=loc.device)
-        self._smax = torch.Tensor([smax],device=loc.device)
+        self._smin = torch.Tensor([smin]).to(loc.device)
+        self._smax = torch.Tensor([smax]).to(loc.device)
         self._unbounded = self._smin == -np.inf and self._smax == np.inf
         self.A = 1 / (self._scale * np.sqrt(2 * np.pi))
         self.Z = self._normal.cdf(self._smax) - self._normal.cdf(self._smin)
