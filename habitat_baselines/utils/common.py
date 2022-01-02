@@ -218,6 +218,9 @@ def batch_obs(
     for key in obs.keys():
         if isinstance(obs[key], numbers.Number):
             print(key, 1)
+        elif isinstance(obs[key], List):
+            print(key, len(obs[key]))
+            print(obs[key][0].shape)
         else:
             print(key)
             print(obs[key].shape)
