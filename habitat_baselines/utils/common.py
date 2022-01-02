@@ -216,13 +216,15 @@ def batch_obs(
 
     obs = observations[0]
     for key in obs.keys():
+        print(key, type(obs[key]))
         if isinstance(obs[key], numbers.Number):
-            print(key, 1)
+            print(1)
+            # print(key, 1)
         elif isinstance(obs[key], List):
-            print(key, len(obs[key]))
-            print(obs[key][0].shape)
+            # print(key, len(obs[key]))
+            print(len(obs[key]))
         else:
-            print(key)
+            # print(key)
             print(obs[key].shape)
     # Order sensors by size, stack and move the largest first
     sensor_names = sorted(
