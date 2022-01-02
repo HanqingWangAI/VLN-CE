@@ -28,6 +28,9 @@ DEFAULT_MASTER_ADDR = "127.0.0.1"
 
 SLURM_JOBID = os.environ.get("SLURM_JOB_ID", None)
 RESUME_STATE_BASE_NAME = ".habitat-resume-state"
+INTERRUPTED_STATE_FILE = osp.join(
+    os.environ["HOME"], ".interrupted_states", f"{SLURM_JOBID}.pth"
+)
 
 
 def is_slurm_job() -> bool:
@@ -149,6 +152,45 @@ def add_signal_handlers() -> None:
     signal.signal(signal.SIGTERM, _clean_exit_and_save_handler)
 
     signal.signal(signal.SIGUSR1, _requeue_handler)
+
+
+def save_interrupted_state(state: Any, filename: str = None):
+    r"""Saves the interrupted job state to the specified filename.
+        This is useful when working with preemptable job partitions.
+
+    This method will do nothing if SLURM is not currently being used and the filename is the default
+
+    :param state: The state to save
+    :param filename: The filename.  Defaults to "${HOME}/.interrupted_states/${SLURM_JOBID}.pth"
+    """
+    if SLURM_JOBID is None and filename is None:
+        logger.warn("SLURM_JOBID is none, not saving interrupted state")
+        return
+
+    if filename is None:
+        filename = INTERRUPTED_STATE_FILE
+
+    torch.save(state, filename)
+
+
+def load_interrupted_state(filename: str = None) -> Optional[Any]:
+    r"""Loads the saved interrupted state
+
+    :param filename: The filename of the saved state.
+        Defaults to "${HOME}/.interrupted_states/${SLURM_JOBID}.pth"
+
+    :return: The saved state if the file exists, else none
+    """
+    if SLURM_JOBID is None and filename is None:
+        return None
+
+    if filename is None:
+        filename = INTERRUPTED_STATE_FILE
+
+    if not osp.exists(filename):
+        return None
+
+    return torch.load(filename, map_location="cpu")
 
 
 @rank0_only

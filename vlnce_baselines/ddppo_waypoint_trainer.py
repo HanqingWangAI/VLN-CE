@@ -64,7 +64,7 @@ class DDPPOWaypointTrainer(PPOTrainer):
 
         self.video_in_env = config.ENV_NAME == "VLNCEWaypointEnvDiscretized"
 
-        interrupted_state = load_resume_state()
+        interrupted_state = load_resume_state(config)
         if interrupted_state is not None:
             config = interrupted_state["config"]
 
