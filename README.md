@@ -10,7 +10,7 @@ Official implementations:
 Vision and Language Navigation in Continuous Environments (VLN-CE) is an instruction-guided navigation task with crowdsourced instructions, realistic environments, and unconstrained agent navigation. This repo is a launching point for interacting with the VLN-CE task and provides both baseline agents and training methods. Both the Room-to-Room (**R2R**) and the Room-Across-Room (**RxR**) datasets are supported. VLN-CE is implemented using the Habitat platform.
 
 <p align="center">
-  <img width="775" height="360" src="./data/res/VLN_comparison.gif" alt="VLN-CE comparison to VLN">
+  <img width="775" height="360" src="./_data/res/VLN_comparison.gif" alt="VLN-CE comparison to VLN">
 </p>
 
 ## Setup
