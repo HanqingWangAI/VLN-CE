@@ -215,6 +215,12 @@ def batch_obs(
         batch: DefaultDict[str, List] = defaultdict(list)
 
     obs = observations[0]
+    for key in obs.keys():
+        if isinstance(obs[key], numbers.Number):
+            print(key, 1)
+        else:
+            print(key)
+            print(obs[key].shape)
     # Order sensors by size, stack and move the largest first
     sensor_names = sorted(
         obs.keys(),
