@@ -6,7 +6,7 @@ export GLOG_minloglevel=2
 export MAGNUM_LOG=quiet
 
 
-bsub -n 32 -R "rusage[mem=4000,ngpus_excl_p=8]" -W 48:00 -oo logs python -u -m torch.distributed.launch \
+bsub -n 16 -R "rusage[mem=8000,ngpus_excl_p=8]" -W 48:00 -oo logs python -u -m torch.distributed.launch \
     --use_env \
     --nproc_per_node 8 \
     run.py \
