@@ -26,9 +26,9 @@ from habitat_baselines.rl.ddppo.algo.ddp_utils import (
     REQUEUE,
     add_signal_handlers,
     init_distrib_slurm,
-    load_resume_state,
+    load_interrupted_state,
     requeue_job,
-    save_resume_state,
+    save_interrupted_state,
 )
 from habitat_baselines.rl.ppo.ppo_trainer import PPOTrainer
 from habitat_baselines.utils.common import batch_obs, linear_decay
@@ -64,7 +64,7 @@ class DDPPOWaypointTrainer(PPOTrainer):
 
         self.video_in_env = config.ENV_NAME == "VLNCEWaypointEnvDiscretized"
 
-        interrupted_state = load_resume_state(config)
+        interrupted_state = load_interrupted_state()
         if interrupted_state is not None:
             config = interrupted_state["config"]
 
@@ -435,7 +435,7 @@ class DDPPOWaypointTrainer(PPOTrainer):
             self.config.RL.DDPPO.start_from_requeue = False
             self.config.freeze()
 
-        interrupted_state = load_resume_state(filename)
+        interrupted_state = load_interrupted_state(filename)
         if interrupted_state is not None:
             self.agent.load_state_dict(interrupted_state["state_dict"])
             self.agent.optimizer.load_state_dict(
@@ -479,7 +479,7 @@ class DDPPOWaypointTrainer(PPOTrainer):
                             start_update=update,
                             prev_time=(time.time() - t_start) + prev_time,
                         )
-                        save_resume_state(
+                        save_interrupted_state(
                             dict(
                                 state_dict=self.agent.state_dict(),
                                 optim_state=self.agent.optimizer.state_dict(),
