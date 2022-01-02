@@ -217,7 +217,7 @@ def batch_obs(
     observations_t = []
     for obs in observations:
         obs_item = {}
-        for key in obs.items():
+        for key in obs.keys():
             obs_item[key] = np.array(obs[key])
         observations_t.append(obs_item)
     observations = observations_t
