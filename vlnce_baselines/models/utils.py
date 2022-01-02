@@ -50,7 +50,7 @@ class TruncatedNormal(nn.Module):
             assert scale >= 0.0, "scale is negative"
         else:
             assert (scale >= 0.0).all(), "scale is negative"
-
+        print(loc, scale)
         self._normal = Normal(loc, scale, validate_args=validate_args)
         self._loc = loc
         self._scale = scale
