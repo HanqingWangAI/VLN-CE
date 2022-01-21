@@ -270,7 +270,7 @@ class WaypointPolicy(Policy):
         masks: Tensor,
         action_components: Dict[str, Tensor],
     ) -> Tuple[Tensor, Tensor, Dict[str, Tensor], Tensor]:
-        print('start eval actions')
+        # print('start eval actions')
         output = self.net(
             observations,
             rnn_states,

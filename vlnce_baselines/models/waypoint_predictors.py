@@ -320,14 +320,14 @@ class WaypointPredictionNet(Net):
 
         rnn_states_out = torch.zeros_like(rnn_states)
 
-        for sensor, tensor in observations.items():
-            print('obs', sensor, tensor.shape)
+        # for sensor, tensor in observations.items():
+        #     print('obs', sensor, tensor.shape)
 
-        for key, ele in prev_actions.items():
-            print('prev_action', key, ele.shape)
+        # for key, ele in prev_actions.items():
+        #     print('prev_action', key, ele.shape)
 
-        print('rnn_state',rnn_states.shape)
-        print('mask', masks.shape)
+        # print('rnn_state',rnn_states.shape)
+        # print('mask', masks.shape)
 
         # ===========================
         #  Single Modality Encoding
@@ -380,8 +380,8 @@ class WaypointPredictionNet(Net):
             3,
         )
 
-        print('rgb_embedding before', rgb_embedding.shape)
-        print('depth_embedding before', depth_embedding.shape)
+        # print('rgb_embedding before', rgb_embedding.shape)
+        # print('depth_embedding before', depth_embedding.shape)
 
         # split time t embeddings from time t-1 embeddings
         rgb_history = rgb_embedding[:, self._num_panos]
@@ -389,10 +389,10 @@ class WaypointPredictionNet(Net):
         depth_history = depth_embedding[:, self._num_panos]
         depth_embedding = depth_embedding[:, : self._num_panos].contiguous()
 
-        print('rgb_embedding after', rgb_embedding.shape)
-        print('depth_embedding after', depth_embedding.shape)
-        print('rgb history', rgb_history.shape)
-        print('depth history', depth_history.shape)
+        # print('rgb_embedding after', rgb_embedding.shape)
+        # print('depth_embedding after', depth_embedding.shape)
+        # print('rgb history', rgb_history.shape)
+        # print('depth history', depth_history.shape)
 
         if len(prev_actions["pano"].shape) == 1:
             for k in prev_actions:
