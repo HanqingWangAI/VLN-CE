@@ -10,7 +10,7 @@ RESULTS_DIR: data/checkpoints/cma/evals
 
 EVAL:
   USE_CKPT_CONFIG: False
-  SPLIT: val_unseen
+  SPLIT: train
   EPISODE_COUNT: 40
 
 IL:
