@@ -11,7 +11,7 @@ RESULTS_DIR: data/checkpoints/cma/evals
 EVAL:
   USE_CKPT_CONFIG: False
   SPLIT: val_unseen
-  EPISODE_COUNT: -1
+  EPISODE_COUNT: 40
 
 IL:
   epochs: 45
