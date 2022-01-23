@@ -4,9 +4,9 @@ ENV_NAME: VLNCEWaypointEnv
 SIMULATOR_GPU_IDS: [0]
 TORCH_GPU_ID: 0
 NUM_ENVIRONMENTS: 8
-TENSORBOARD_DIR: data/tensorboard_dirs/hpn___21
-CHECKPOINT_FOLDER: data/checkpoints/hpn___21
-EVAL_CKPT_PATH_DIR: data/checkpoints/hpn___21
+TENSORBOARD_DIR: data/tensorboard_dirs/hpn___220123_1
+CHECKPOINT_FOLDER: data/checkpoints/hpn___220123_1
+EVAL_CKPT_PATH_DIR: data/checkpoints/hpn___220123_1
 
 RL:
   POLICY:

@@ -472,7 +472,7 @@ class WaypointPredictionNet(Net):
         # prepare text query
         text_q_spatial = self.text_q_linear(text_embedding)  # [B, 256]
         text_q_spatial = text_q_spatial.repeat_interleave(
-            self._num_panos
+            self._num_panos, 0
         ).view(
             text_q_spatial.shape[0] * self._num_panos,
             *text_q_spatial.shape[1:],
