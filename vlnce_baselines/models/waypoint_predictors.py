@@ -1,3 +1,4 @@
+from turtle import forward
 from typing import Dict, Tuple
 
 import numpy as np
@@ -640,3 +641,473 @@ class WaypointPredictionNet(Net):
             x,
             rnn_states_out,
         )
+
+
+
+class ContrastiveNet(WaypointPredictionNet):
+
+    def deal(self, text_embedding, observations):
+        '''
+            text_embedding
+            observations: 'rgb_features':  num_samples x 2048 x 4 x 4
+                          'depth_features': num_samples x 128 x 4 x 4
+            
+        '''
+        bs, _  = text_embedding.shape
+
+        rgb_obs = observations['rgb_features']
+        n, d, w, h = rgb_obs.shape
+        rgb_embedding = self.rgb_encoder({"rgb_features": rgb_obs})
+        rgb_embedding = torch.flatten(
+            rgb_embedding.view(n, d, w, h), 2
+        ).view(1, n, d, w * h).expand(bs, n, d, w * h)
+
+        depth_obs = observations['depth_features']
+        n, d, w, h = depth_obs.shape
+        depth_embedding = self.depth_encoder({"depth_features": depth_obs})
+        depth_embedding = torch.flatten(
+            depth_embedding.view(n, d, w, h), 2
+        ).view(1, n, d, w * h).expand(bs, n, d, w * h)
+
+        # ===========================
+        #     Spatial Attention
+        # ===========================
+
+        # flatten negative frames for spatial attention
+        batch_size = rgb_embedding.shape[0]
+        flat_rgb_embedding = rgb_embedding.view(
+            rgb_embedding.shape[0] * rgb_embedding.shape[1],
+            *rgb_embedding.shape[2:],
+        )
+        flat_depth_embedding = depth_embedding.view(
+            depth_embedding.shape[0] * depth_embedding.shape[1],
+            *depth_embedding.shape[2:],
+        )
+
+        # prepare text query
+        text_q_spatial = self.text_q_linear(text_embedding)  # [B, 256]
+        text_q_spatial = text_q_spatial.repeat_interleave(
+            n
+        ).view(
+            text_q_spatial.shape[0] * n,
+            *text_q_spatial.shape[1:],
+        )  # [B*12, 256]
+
+        # split K, V for dot product attention
+        rgb_kv_in = self.rgb_kv_spatial(flat_rgb_embedding)  # [B*12, 512, 16]
+        rgb_k_spatial, rgb_v_spatial = torch.split(  # k: [B*12, 256, 16]
+            rgb_kv_in, self._hidden_size // 2, dim=1  # v: [B*12, 256, 16]
+        )
+        depth_kv_in = self.depth_kv_spatial(
+            flat_depth_embedding
+        )  # [B*12, 384, 16]
+        depth_k_spatial, depth_v_spatial = torch.split(  # k: [B*12, 256, 16]
+            depth_kv_in, self._hidden_size // 2, dim=1  # v: [B*12, 128, 16]
+        )
+
+        # perform scaled dot product attention
+        spatial_attended_rgb = self.rgb_spatial_attn(  # [B*12, 256]
+            text_q_spatial, rgb_k_spatial, rgb_v_spatial
+        )
+        spatial_attended_depth = self.depth_spatial_attn(  # [B*12, 128]
+            text_q_spatial, depth_k_spatial, depth_v_spatial
+        )
+
+        
+
+
+        # un-flatten spatial features to [B, 12, _]
+        spatial_attended_rgb = spatial_attended_rgb.view(
+            batch_size,
+            spatial_attended_rgb.shape[0] // batch_size,
+            *spatial_attended_rgb.shape[1:],
+        )
+        spatial_attended_depth = spatial_attended_depth.view(
+            batch_size,
+            spatial_attended_depth.shape[0] // batch_size,
+            *spatial_attended_depth.shape[1:],
+        )
+
+        # ===========================
+        #     Panorama Attention
+        # ===========================
+
+        shared_spatial_features = torch.cat(
+            [
+                spatial_attended_rgb,
+                spatial_attended_depth,
+                observations["angle_features"],
+            ],
+            dim=2,
+        ).permute(
+            0, 2, 1
+        )  # [B, _, 12]
+
+        attended_pano_features = self.pano_attn(
+            Q=text_embedding,
+            K=shared_spatial_features,
+            V=shared_spatial_features,
+        )
+
+
+    def forward(
+        self,
+        observations: Dict[str, Tensor],
+        rnn_states: Tensor,
+        prev_actions: Dict[str, Tensor],
+        masks: Tensor,
+    ) -> Tuple[
+        CustomFixedCategorical,
+        Tensor,
+        Tensor,
+        Tensor,
+        Tensor,
+        Tensor,
+        Tensor,
+    ]:
+        """
+        Returns:
+            pano_stop_distribution: [B, p+1] with range [0, inf]
+            offsets: [B, p] with range: [-offset_scale, offset_scale]
+            distances: [B, p] with range: [min_distance_prediction, max_distance_prediction]
+            offsets_vars: [B, p] with range: [min_offset_var, max_offset_var]
+            distances_vars: [B, p] with range: [min_distance_var, max_distance_var]
+            x: [B, 512]
+            rnn_states: [B, 512]
+        """
+        assert "rgb" in observations
+        assert "depth" in observations
+        assert "instruction" in observations
+        assert "rgb_history" in observations
+        assert "depth_history" in observations
+        assert "angle_features" in observations
+
+        assert observations["rgb"].shape[1] == self._num_panos
+        assert observations["depth"].shape[1] == self._num_panos
+
+        rnn_states_out = torch.zeros_like(rnn_states)
+
+        # for sensor, tensor in observations.items():
+        #     print('obs', sensor, tensor.shape)
+
+        # for key, ele in prev_actions.items():
+        #     print('prev_action', key, ele.shape)
+
+        # print('rnn_state',rnn_states.shape)
+        # print('mask', masks.shape)
+
+        # ===========================
+        #  Single Modality Encoding
+        # ===========================
+
+        instruction_embedding = self.instruction_encoder(observations)
+
+        # encode rgb observations and history
+        rgb_obs = torch.cat(
+            [
+                observations["rgb"],
+                (
+                    observations["rgb_history"].permute(1, 2, 3, 0)
+                    * masks.squeeze(1)
+                )
+                .permute(3, 0, 1, 2)
+                .unsqueeze(1),
+            ],
+            dim=1,
+        )
+
+        rgb_size = rgb_obs.size()
+        rgb_obs = rgb_obs.view((rgb_size[0] * rgb_size[1], *rgb_size[2:5]))
+        rgb_embedding = self.rgb_encoder({"rgb": rgb_obs})
+        rgb_embedding = torch.flatten(
+            rgb_embedding.view(*rgb_size[0:2], *rgb_embedding.shape[1:]), 3
+        )
+
+        # encode depth observations and history
+        depth_obs = torch.cat(
+            [
+                observations["depth"],
+                (
+                    observations["depth_history"].permute(1, 2, 3, 0)
+                    * masks.squeeze(1)
+                )
+                .permute(3, 0, 1, 2)
+                .unsqueeze(1),
+            ],
+            dim=1,
+        )
+
+        depth_size = depth_obs.size()
+        depth_obs = depth_obs.view(
+            (depth_size[0] * depth_size[1],) + depth_size[2:5]
+        )
+        depth_embedding = self.depth_encoder({"depth": depth_obs})
+        depth_embedding = torch.flatten(
+            depth_embedding.view(depth_size[0:2] + depth_embedding.shape[1:]),
+            3,
+        )
+
+        # print('rgb_embedding before', rgb_embedding.shape)
+        # print('depth_embedding before', depth_embedding.shape)
+
+        # split time t embeddings from time t-1 embeddings
+        rgb_history = rgb_embedding[:, self._num_panos]
+        rgb_embedding = rgb_embedding[:, : self._num_panos].contiguous()
+        depth_history = depth_embedding[:, self._num_panos]
+        depth_embedding = depth_embedding[:, : self._num_panos].contiguous()
+
+        # print('rgb_embedding after', rgb_embedding.shape)
+        # print('depth_embedding after', depth_embedding.shape)
+        # print('rgb history', rgb_history.shape)
+        # print('depth history', depth_history.shape)
+
+        if len(prev_actions["pano"].shape) == 1:
+            for k in prev_actions:
+                prev_actions[k] = prev_actions[k].unsqueeze(1)
+
+        prev_actions = (
+            torch.cat(
+                [
+                    self._map_pano_to_heading_features(prev_actions["pano"]),
+                    self.offset_to_continuous(prev_actions["offset"]),
+                    self.distance_to_continuous(prev_actions["distance"]),
+                ],
+                dim=1,
+            ).float()
+            * masks
+        )
+
+        # ===========================
+        #     Modality Ablations
+        # ===========================
+
+        if self.model_config.ablate_instruction:
+            instruction_embedding *= 0
+        if self.model_config.ablate_rgb:
+            rgb_embedding = rgb_embedding * 0
+            rgb_history *= 0
+        if self.model_config.ablate_depth:
+            depth_embedding *= 0
+            depth_history *= 0
+
+        # ===========================
+        #     Visual History: GRU
+        # ===========================
+
+        rnn_inputs = [
+            self._mean_pool_rgb_features(rgb_embedding),
+            prev_actions,
+            self.rgb_hist_linear(rgb_history),
+            self.depth_hist_linear(depth_history),
+        ]
+
+        (
+            visual_hist_feats,
+            rnn_states_out[:, 0 : self.visual_rnn.num_recurrent_layers],
+        ) = self.visual_rnn(
+            torch.cat(rnn_inputs, dim=1),
+            rnn_states[:, 0 : self.visual_rnn.num_recurrent_layers],
+            masks,
+        )
+
+        # ===========================
+        #    Instruction Attention
+        # ===========================
+
+        text_embedding = self.inst_attn(
+            Q=self.inst_attn_q(visual_hist_feats),
+            K=self.inst_attn_k(instruction_embedding),
+            V=instruction_embedding,
+            mask=(instruction_embedding == 0.0).all(dim=1),
+        )
+
+        # ===========================
+        #     Spatial Attention
+        # ===========================
+
+        # flatten pano frames for spatial attention
+        batch_size = rgb_embedding.shape[0]
+        flat_rgb_embedding = rgb_embedding.view(
+            rgb_embedding.shape[0] * rgb_embedding.shape[1],
+            *rgb_embedding.shape[2:],
+        )
+        flat_depth_embedding = depth_embedding.view(
+            depth_embedding.shape[0] * depth_embedding.shape[1],
+            *depth_embedding.shape[2:],
+        )
+
+        # prepare text query
+        text_q_spatial = self.text_q_linear(text_embedding)  # [B, 256]
+        text_q_spatial = text_q_spatial.repeat_interleave(
+            self._num_panos
+        ).view(
+            text_q_spatial.shape[0] * self._num_panos,
+            *text_q_spatial.shape[1:],
+        )  # [B*12, 256]
+
+        # split K, V for dot product attention
+        rgb_kv_in = self.rgb_kv_spatial(flat_rgb_embedding)  # [B*12, 512, 16]
+        rgb_k_spatial, rgb_v_spatial = torch.split(  # k: [B*12, 256, 16]
+            rgb_kv_in, self._hidden_size // 2, dim=1  # v: [B*12, 256, 16]
+        )
+        depth_kv_in = self.depth_kv_spatial(
+            flat_depth_embedding
+        )  # [B*12, 384, 16]
+        depth_k_spatial, depth_v_spatial = torch.split(  # k: [B*12, 256, 16]
+            depth_kv_in, self._hidden_size // 2, dim=1  # v: [B*12, 128, 16]
+        )
+
+        # perform scaled dot product attention
+        spatial_attended_rgb = self.rgb_spatial_attn(  # [B*12, 256]
+            text_q_spatial, rgb_k_spatial, rgb_v_spatial
+        )
+        spatial_attended_depth = self.depth_spatial_attn(  # [B*12, 128]
+            text_q_spatial, depth_k_spatial, depth_v_spatial
+        )
+
+        
+
+
+        # un-flatten spatial features to [B, 12, _]
+        spatial_attended_rgb = spatial_attended_rgb.view(
+            batch_size,
+            spatial_attended_rgb.shape[0] // batch_size,
+            *spatial_attended_rgb.shape[1:],
+        )
+        spatial_attended_depth = spatial_attended_depth.view(
+            batch_size,
+            spatial_attended_depth.shape[0] // batch_size,
+            *spatial_attended_depth.shape[1:],
+        )
+
+        # ===========================
+        #     Panorama Attention
+        # ===========================
+
+        shared_spatial_features = torch.cat(
+            [
+                spatial_attended_rgb,
+                spatial_attended_depth,
+                observations["angle_features"],
+            ],
+            dim=2,
+        ).permute(
+            0, 2, 1
+        )  # [B, _, 12]
+
+        attended_pano_features = self.pano_attn(
+            Q=text_embedding,
+            K=shared_spatial_features,
+            V=shared_spatial_features,
+        )
+
+        # ===========================
+        #     RNN State Encoder
+        # ===========================
+
+        x = torch.cat(
+            [
+                text_embedding,
+                attended_pano_features,
+                visual_hist_feats,
+                prev_actions,
+            ],
+            dim=1,
+        )
+
+        x = self.main_state_compress(x)
+        (
+            x,
+            rnn_states_out[
+                :,
+                self.visual_rnn.num_recurrent_layers : self.num_recurrent_layers,
+            ],
+        ) = self.main_state_encoder(
+            x,
+            rnn_states[
+                :,
+                self.visual_rnn.num_recurrent_layers : self.num_recurrent_layers,
+            ],
+            masks,
+        )
+
+        # ===========================
+        # Action Distribution Outputs
+        # ===========================
+
+        attended_visual_features = torch.cat(
+            [
+                spatial_attended_rgb,
+                spatial_attended_depth,
+                observations["angle_features"],
+            ],
+            dim=2,
+        )  # [B, 12, d]
+
+        x_small = self.compress_x_linear(x)  # [B, d]
+        x_small = x_small.unsqueeze(1).repeat(
+            1, attended_visual_features.size(1), 1
+        )  # [B, 12, d]
+
+        dotted_features = (attended_visual_features * x_small).sum(2)
+        pano_stop_distribution = CustomFixedCategorical(
+            logits=torch.cat([dotted_features, self.stop_linear(x)], dim=1)
+        )
+
+        catted_features = torch.cat(
+            [
+                attended_visual_features,
+                x.unsqueeze(1).repeat(1, attended_visual_features.size(1), 1),
+            ],
+            dim=2,
+        )
+
+        # ===========================
+        #     Distance Prediction
+        # ===========================
+
+        if self.wypt_cfg.continuous_distance:
+            distance_variable1 = self.distance_linear(catted_features)
+            distance_variable1 = distance_variable1.squeeze(2)
+            distance_variable1 = (
+                self.wypt_cfg.max_distance_prediction
+                - self.wypt_cfg.min_distance_prediction
+            ) * distance_variable1 + self.wypt_cfg.min_distance_prediction
+
+            distance_variable2 = (
+                self.wypt_cfg.max_distance_var - self.wypt_cfg.min_distance_var
+            ) * self.distance_var_linear(catted_features).squeeze(
+                2
+            ) + self.wypt_cfg.min_distance_var
+        else:
+            distance_variable1 = self.distance_linear(catted_features)
+            distance_variable1 = distance_variable1.squeeze(2)
+            distance_variable2 = None
+
+        # ===========================
+        #      Offset Prediction
+        # ===========================
+
+        if self.wypt_cfg.continuous_offset:
+            offset_variable1 = self.offset_scale * self.offset_linear(
+                catted_features
+            ).squeeze(2)
+            offset_variable2 = (
+                self.wypt_cfg.max_offset_var - self.wypt_cfg.min_offset_var
+            ) * self.offset_var_linear(catted_features).squeeze(
+                2
+            ) + self.wypt_cfg.min_offset_var
+        else:
+            offset_variable1 = self.offset_linear(catted_features).squeeze(2)
+            offset_variable2 = None
+
+        return (
+            pano_stop_distribution,
+            offset_variable1,
+            offset_variable2,
+            distance_variable1,
+            distance_variable2,
+            x,
+            rnn_states_out,
+        )
+

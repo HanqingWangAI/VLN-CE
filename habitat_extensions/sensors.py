@@ -10,8 +10,10 @@ from habitat.sims.habitat_simulator.actions import HabitatSimActions
 from habitat.tasks.nav.shortest_path_follower import ShortestPathFollower
 from numpy import ndarray
 
+from scipy.spatial import KDTree
+
 from habitat_extensions.shortest_path_follower import (
-    ShortestPathFollowerCompat,
+    ShortestPathFollowerCompat, ShortestPathFollowerOrientation
 )
 from habitat_extensions.task import VLNExtendedEpisode
 
@@ -194,3 +196,68 @@ class RxRInstructionSensor(Sensor):
         s = features["features"].shape
         feats[: s[0], : s[1]] = features["features"]
         return feats
+
+
+
+@registry.register_sensor
+class VLNOracleOrientationSensor(Sensor):
+    r"""Sensor for observing the optimal action to take. The assumption this
+    sensor currently makes is that the shortest path to the goal is the
+    optimal path.
+
+    Args:
+        sim: reference to the simulator for calculating task observations.
+        config: config for the sensor.
+    """
+
+    def __init__(self, sim: Simulator, config: Config, *args: Any, **kwargs: Any):
+        super().__init__(config=config)
+        self._sim = sim
+        # all goals can be navigated to within 0.5m.
+        goal_radius = getattr(config, "GOAL_RADIUS", 0.5)
+        
+        self.follower = ShortestPathFollowerOrientation(
+            sim, goal_radius, config.NUM_CAMERAS, return_one_hot=False
+        )
+        self.follower.mode = "geodesic_path"
+        
+
+    def _get_uuid(self, *args: Any, **kwargs: Any):
+        return "vln_oracle_action_sensor"
+
+    def _get_sensor_type(self, *args: Any, **kwargs: Any):
+        return SensorTypes.TACTILE
+
+    def _get_observation_space(self, *args: Any, **kwargs: Any):
+        return spaces.Box(low=0.0, high=100, shape=(1,), dtype=np.float)
+
+    def get_observation(self, observations, *args: Any, episode, **kwargs: Any):
+        if self.config.DISTANCE_TO == "POINT":
+            goal_positions = [goal.position for goal in episode.goals]
+            # goal_positions = goal_positions[0]
+        else:
+            goal_positions = [
+                view_point.agent_state.position
+                for goal in episode.goals
+                for view_point in goal.view_points[:5]
+            ]
+            num = len(goal_positions)
+            currrent_pos = self._sim.get_agent_state().position
+            tree = KDTree(goal_positions)
+            _, idx = tree.query(currrent_pos, 5)
+            cnt = num
+            for i, _ in enumerate(idx):
+                if _ == num:
+                    cnt = i
+                    break
+
+            idx = idx[:cnt]
+            # print('distance',_, idx,'points', goal_positions)
+            goal_positions = [tree.data[i] for i in idx]
+            # goal_positions = goal_positions[0]
+
+        best_orientation = self.follower.get_next_orientation(goal_positions)
+        # return np.array(
+        #     [best_action if best_action is not None else HabitatSimActions.STOP]
+        # )
+        return np.array([best_orientation])

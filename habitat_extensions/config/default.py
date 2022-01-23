@@ -22,6 +22,17 @@ _C.TASK.GLOBAL_GPS_SENSOR.DIMENSIONALITY = 2
 _C.TASK.ORACLE_ACTION_SENSOR = CN()
 _C.TASK.ORACLE_ACTION_SENSOR.TYPE = "OracleActionSensor"
 _C.TASK.ORACLE_ACTION_SENSOR.GOAL_RADIUS = 0.5
+# -----------------------------------------------------------------------------
+# VLN ORACLE ORIENTATION SENSOR
+# -----------------------------------------------------------------------------
+_C.TASK.VLN_ORACLE_ORIENTATION_SENSOR = CN()
+_C.TASK.VLN_ORACLE_ORIENTATION_SENSOR.TYPE = "VLNOracleOrientationSensor"
+_C.TASK.VLN_ORACLE_ORIENTATION_SENSOR.GOAL_RADIUS = 0.5
+_C.TASK.VLN_ORACLE_ORIENTATION_SENSOR.NUM_CAMERAS = 12
+# compatibility with the dataset generation oracle and paper results.
+# if False, use the ShortestPathFollower in Habitat
+_C.TASK.VLN_ORACLE_ORIENTATION_SENSOR.USE_ORIGINAL_FOLLOWER = True
+_C.TASK.VLN_ORACLE_ORIENTATION_SENSOR.DISTANCE_TO = "POINT"
 # ----------------------------------------------------------------------------
 # # RXR INSTRUCTION SENSOR
 # ----------------------------------------------------------------------------
