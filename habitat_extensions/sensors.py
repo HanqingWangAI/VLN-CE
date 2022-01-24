@@ -223,7 +223,7 @@ class VLNOracleOrientationSensor(Sensor):
         
 
     def _get_uuid(self, *args: Any, **kwargs: Any):
-        return "vln_oracle_action_sensor"
+        return "vln_oracle_orientation_sensor"
 
     def _get_sensor_type(self, *args: Any, **kwargs: Any):
         return SensorTypes.TACTILE

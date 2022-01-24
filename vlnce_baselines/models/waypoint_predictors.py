@@ -9,7 +9,7 @@ from habitat_baselines.rl.models.rnn_state_encoder import (
     build_rnn_state_encoder,
 )
 from habitat_baselines.rl.ppo.policy import Net
-from torch import Tensor, nn
+from torch import Tensor, device, nn
 
 from vlnce_baselines.models.encoders import resnet_encoders
 from vlnce_baselines.models.encoders.instruction_encoder import (
@@ -646,13 +646,15 @@ class WaypointPredictionNet(Net):
 
 class ContrastiveNet(WaypointPredictionNet):
 
-    def deal(self, text_embedding, observations):
+    def negative_candidates(self, text_embedding: Tensor, x: Tensor, observations):
         '''
             text_embedding
             observations: 'rgb_features':  num_samples x 2048 x 4 x 4
                           'depth_features': num_samples x 128 x 4 x 4
+                          'vln_oracle_orientation_sensor': B x 1
             
         '''
+        t_device = text_embedding.device
         bs, _  = text_embedding.shape
 
         rgb_obs = observations['rgb_features']
@@ -686,37 +688,39 @@ class ContrastiveNet(WaypointPredictionNet):
 
         # prepare text query
         text_q_spatial = self.text_q_linear(text_embedding)  # [B, 256]
-        text_q_spatial = text_q_spatial.repeat_interleave(
-            n
-        ).view(
-            text_q_spatial.shape[0] * n,
-            *text_q_spatial.shape[1:],
-        )  # [B*12, 256]
+        # text_q_spatial = text_q_spatial.repeat_interleave(
+        #     n, 0
+        # ).view(
+        #     text_q_spatial.shape[0] * n,
+        #     *text_q_spatial.shape[1:],
+        # )  # [B*12, 256]
+        B, D = text_q_spatial.shape
+        text_q_spatial = text_q_spatial.view(B, 1, D).expand(B, n, D).contiguous().view(B * n, D)
 
         # split K, V for dot product attention
-        rgb_kv_in = self.rgb_kv_spatial(flat_rgb_embedding)  # [B*12, 512, 16]
-        rgb_k_spatial, rgb_v_spatial = torch.split(  # k: [B*12, 256, 16]
-            rgb_kv_in, self._hidden_size // 2, dim=1  # v: [B*12, 256, 16]
+        rgb_kv_in = self.rgb_kv_spatial(flat_rgb_embedding)  # [B*n, 512, 16]
+        rgb_k_spatial, rgb_v_spatial = torch.split(  # k: [B*n, 256, 16]
+            rgb_kv_in, self._hidden_size // 2, dim=1  # v: [B*n, 256, 16]
         )
         depth_kv_in = self.depth_kv_spatial(
             flat_depth_embedding
         )  # [B*12, 384, 16]
-        depth_k_spatial, depth_v_spatial = torch.split(  # k: [B*12, 256, 16]
-            depth_kv_in, self._hidden_size // 2, dim=1  # v: [B*12, 128, 16]
+        depth_k_spatial, depth_v_spatial = torch.split(  # k: [B*n, 256, 16]
+            depth_kv_in, self._hidden_size // 2, dim=1  # v: [B*n, 128, 16]
         )
 
         # perform scaled dot product attention
-        spatial_attended_rgb = self.rgb_spatial_attn(  # [B*12, 256]
+        spatial_attended_rgb = self.rgb_spatial_attn(  # [B*n, 256]
             text_q_spatial, rgb_k_spatial, rgb_v_spatial
         )
-        spatial_attended_depth = self.depth_spatial_attn(  # [B*12, 128]
+        spatial_attended_depth = self.depth_spatial_attn(  # [B*n, 128]
             text_q_spatial, depth_k_spatial, depth_v_spatial
         )
 
         
 
 
-        # un-flatten spatial features to [B, 12, _]
+        # un-flatten spatial features to [B, n, _]
         spatial_attended_rgb = spatial_attended_rgb.view(
             batch_size,
             spatial_attended_rgb.shape[0] // batch_size,
@@ -728,26 +732,58 @@ class ContrastiveNet(WaypointPredictionNet):
             *spatial_attended_depth.shape[1:],
         )
 
+        
+        best_orientations = observations['vln_oracle_orientation_sensor'] # B x 1
+
+        possible_neg_orien = []
+        for i in range(B):
+            o = int(best_orientations[i, 0].item())
+            l = []
+            for k in range(self._num_panos):
+                if k in [(o - 1) % self._num_panos, o % self._num_panos, (o + 1) % self._num_panos]:
+                    continue
+                l.append(k)
+            l = np.array(l)
+            possible_neg_orien.append(l)
+        possible_neg_orien = np.concatenate(possible_neg_orien)
+        possible_neg_orien = torch.from_numpy(possible_neg_orien).float().to(t_device) # B x n_pano-3
+        idx = torch.randint(high=self._num_panos-3, size=(B * n)).to(t_device)
+        neg_orien = np.pi * 2 / self._num_panos * possible_neg_orien[idx].view(B, n)
+        neg_sin = torch.sin(neg_orien)
+        neg_cos = torch.cos(neg_orien)
+        zeros = torch.zeros_like(neg_sin).float().to(t_device)
+        ones = torch.ones_like(neg_sin).float().to(t_device)
+        angle_features = torch.stack([neg_sin, neg_cos, zeros, ones], dim=-1)
+
         # ===========================
-        #     Panorama Attention
+        # Negative Sample Distribution Outputs
         # ===========================
 
-        shared_spatial_features = torch.cat(
+        negative_spatial_features = torch.cat(
             [
                 spatial_attended_rgb,
                 spatial_attended_depth,
-                observations["angle_features"],
+                # observations["angle_features"],
+                angle_features
             ],
             dim=2,
-        ).permute(
-            0, 2, 1
-        )  # [B, _, 12]
+        )# [B, n, D]
 
-        attended_pano_features = self.pano_attn(
-            Q=text_embedding,
-            K=shared_spatial_features,
-            V=shared_spatial_features,
-        )
+
+        x_small = self.compress_x_linear(x)  # [B, d]
+        B, d = x_small.shape
+        x_small = x_small.unsqueeze(1).expand(
+            B, negative_spatial_features.size(1), d
+        )  # [B, n, d]
+
+        dotted_features = (negative_spatial_features * x_small).sum(2)
+
+        # attended_pano_features = self.pano_attn(
+        #     Q=text_embedding,
+        #     K=shared_spatial_features,
+        #     V=shared_spatial_features,
+        # )
+        return dotted_features
 
 
     def forward(
@@ -757,7 +793,7 @@ class ContrastiveNet(WaypointPredictionNet):
         prev_actions: Dict[str, Tensor],
         masks: Tensor,
     ) -> Tuple[
-        CustomFixedCategorical,
+        Tuple[CustomFixedCategorical,CustomFixedCategorical],
         Tensor,
         Tensor,
         Tensor,
@@ -1050,9 +1086,19 @@ class ContrastiveNet(WaypointPredictionNet):
         )  # [B, 12, d]
 
         dotted_features = (attended_visual_features * x_small).sum(2)
-        pano_stop_distribution = CustomFixedCategorical(
-            logits=torch.cat([dotted_features, self.stop_linear(x)], dim=1)
-        )
+        if 'rgb_features' in observations:
+            dotted_negative_features = self.negative_candidates(text_embedding, x, observations)
+            pano_stop_distribution_cl = CustomFixedCategorical(
+            logits=torch.cat([dotted_features, self.stop_linear(x), dotted_negative_features], dim=1)
+            )
+            pano_stop_distribution = CustomFixedCategorical(
+                logits=torch.cat([dotted_features, self.stop_linear(x)], dim=1)
+            )
+        else:
+            pano_stop_distribution = CustomFixedCategorical(
+                logits=torch.cat([dotted_features, self.stop_linear(x)], dim=1)
+            )
+            pano_stop_distribution_cl = pano_stop_distribution
 
         catted_features = torch.cat(
             [
@@ -1102,7 +1148,7 @@ class ContrastiveNet(WaypointPredictionNet):
             offset_variable2 = None
 
         return (
-            pano_stop_distribution,
+            (pano_stop_distribution, pano_stop_distribution_cl),
             offset_variable1,
             offset_variable2,
             distance_variable1,
