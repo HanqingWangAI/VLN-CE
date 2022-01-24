@@ -4,9 +4,9 @@ ENV_NAME: VLNCEWaypointEnv
 SIMULATOR_GPU_IDS: [0]
 TORCH_GPU_ID: 0
 NUM_ENVIRONMENTS: 8
-TENSORBOARD_DIR: data/tensorboard_dirs/hpn___220124_2
-CHECKPOINT_FOLDER: data/checkpoints/hpn___220124_2
-EVAL_CKPT_PATH_DIR: data/checkpoints/hpn___220124_2
+TENSORBOARD_DIR: data/tensorboard_dirs/hpn___220124_3
+CHECKPOINT_FOLDER: data/checkpoints/hpn___220124_3
+EVAL_CKPT_PATH_DIR: data/checkpoints/hpn___220124_3
 
 RL:
   POLICY:
@@ -28,7 +28,7 @@ MODEL:
     final_state_only: False
 
   RGB_ENCODER:
-    cnn_type: TorchVisionResNet18
+    cnn_type: TorchVisionResNet50
     output_size: 128
 
   STATE_ENCODER:
