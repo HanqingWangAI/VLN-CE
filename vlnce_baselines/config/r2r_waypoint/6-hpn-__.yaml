@@ -1,12 +1,12 @@
 BASE_TASK_CONFIG_PATH: habitat_extensions/config/vlnce_waypoint_task.yaml
-TRAINER_NAME: ddppo-waypoint
+TRAINER_NAME: ddppo-waypoint-cl
 ENV_NAME: VLNCEWaypointEnv
 SIMULATOR_GPU_IDS: [0]
 TORCH_GPU_ID: 0
 NUM_ENVIRONMENTS: 8
-TENSORBOARD_DIR: data/tensorboard_dirs/hpn___21
-CHECKPOINT_FOLDER: data/checkpoints/hpn___21
-EVAL_CKPT_PATH_DIR: data/checkpoints/hpn___21
+TENSORBOARD_DIR: data/tensorboard_dirs/hpn___debug
+CHECKPOINT_FOLDER: data/checkpoints/hpn___debug
+EVAL_CKPT_PATH_DIR: data/checkpoints/hpn___debug
 
 RL:
   POLICY:
@@ -17,7 +17,7 @@ RL:
     pano_entropy_coef: 1.5
 
 MODEL:
-  policy_name: WaypointPolicy
+  policy_name: WaypointPolicyCL
 
   WAYPOINT:
     predict_distance: False

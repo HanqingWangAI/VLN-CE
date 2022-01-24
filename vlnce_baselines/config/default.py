@@ -208,6 +208,9 @@ _C.RL.DDPPO.distrib_backend = "NCCL"  # or GLOO
 _C.RL.DDPPO.reset_critic = True
 _C.RL.DDPPO.start_from_requeue = False
 _C.RL.DDPPO.requeue_path = "data/interrupted_state.pth"
+_C.RL.DDPPO.pretrained_weights = ""
+# Loads pretrained weights
+_C.RL.DDPPO.pretrained = False
 # ----------------------------------------------------------------------------
 # MODELING CONFIG
 # ----------------------------------------------------------------------------

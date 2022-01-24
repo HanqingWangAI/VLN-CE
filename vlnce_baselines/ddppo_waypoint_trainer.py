@@ -138,8 +138,9 @@ class DDPPOWaypointTrainer(PPOTrainer):
             distance_entropy_coef=ppo_cfg.distance_entropy_coef,
         )
 
-        if load_from_ckpt:
-            ckpt_dict = self.load_checkpoint(ckpt_to_load, map_location="cpu")
+        # if load_from_ckpt:
+        if config.RL.DDPPO.pretrained:
+            ckpt_dict = self.load_checkpoint(config.RL.DDPPO.pretrained_weights, map_location="cpu")
             self.agent.load_state_dict(ckpt_dict["state_dict"])
         self.policy = policy
 
@@ -983,3 +984,51 @@ class DDPPOWaypointTrainer(PPOTrainer):
         for k, v in aggregated_stats.items():
             logger.info(f"{k}: {v:.6f}")
             writer.add_scalar(f"eval_{split}_{k}", v, checkpoint_index)
+
+
+@baseline_registry.register_trainer(name="ddppo-waypoint-cl")
+class CLDDPPOWaypointTrainer(DDPPOWaypointTrainer):
+    def _initialize_policy(
+        self,
+        config: Config,
+        load_from_ckpt: bool,
+        observation_space: Space,
+        action_space: Space,
+        ckpt_to_load: str = None,
+    ) -> None:
+        policy = baseline_registry.get_policy(config.MODEL.policy_name)
+        policy = policy.from_config(
+            config=config,
+            observation_space=observation_space,
+            action_space=action_space,
+        )
+        policy.to(self.device)
+
+        if config.RL.DDPPO.reset_critic:
+            nn.init.orthogonal_(policy.critic.fc.weight)
+            nn.init.constant_(policy.critic.fc.bias, 0)
+
+        ppo_cfg = config.RL.PPO
+        self.agent = WDDPPO(
+            actor_critic=policy,
+            clip_param=ppo_cfg.clip_param,
+            ppo_epoch=ppo_cfg.ppo_epoch,
+            num_mini_batch=ppo_cfg.num_mini_batch,
+            value_loss_coef=ppo_cfg.value_loss_coef,
+            entropy_coef=ppo_cfg.entropy_coef,
+            lr=ppo_cfg.lr,
+            eps=ppo_cfg.eps,
+            max_grad_norm=ppo_cfg.max_grad_norm,
+            use_normalized_advantage=ppo_cfg.use_normalized_advantage,
+            use_clipped_value_loss=ppo_cfg.clip_value_loss,
+            offset_regularize_coef=ppo_cfg.offset_regularize_coef,
+            pano_entropy_coef=ppo_cfg.pano_entropy_coef,
+            offset_entropy_coef=ppo_cfg.offset_entropy_coef,
+            distance_entropy_coef=ppo_cfg.distance_entropy_coef,
+        )
+
+        # if load_from_ckpt:
+        if config.RL.DDPPO.pretrained:
+            ckpt_dict = self.load_checkpoint(config.RL.DDPPO.pretrained_weights, map_location="cpu")
+            self.agent.load_state_dict(ckpt_dict["state_dict"])
+        self.policy = policy
