@@ -138,8 +138,9 @@ class DDPPOWaypointTrainer(PPOTrainer):
             distance_entropy_coef=ppo_cfg.distance_entropy_coef,
         )
 
-        if load_from_ckpt:
-            ckpt_dict = self.load_checkpoint(ckpt_to_load, map_location="cpu")
+        # if load_from_ckpt:
+        if config.RL.DDPPO.pretrained:
+            ckpt_dict = self.load_checkpoint(config.RL.DDPPO.pretrained_weights, map_location="cpu")
             self.agent.load_state_dict(ckpt_dict["state_dict"])
         self.policy = policy
 
