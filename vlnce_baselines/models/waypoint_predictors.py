@@ -657,14 +657,14 @@ class ContrastiveNet(WaypointPredictionNet):
         t_device = text_embedding.device
         bs, _  = text_embedding.shape
 
-        rgb_obs = observations['rgb_features']
+        rgb_obs = observations['neg_rgb_features']
         n, d, w, h = rgb_obs.shape
         rgb_embedding = self.rgb_encoder({"rgb_features": rgb_obs})
         rgb_embedding = torch.flatten(
             rgb_embedding.view(n, d, w, h), 2
         ).view(1, n, d, w * h).expand(bs, n, d, w * h)
 
-        depth_obs = observations['depth_features']
+        depth_obs = observations['neg_depth_features']
         n, d, w, h = depth_obs.shape
         depth_embedding = self.depth_encoder({"depth_features": depth_obs})
         depth_embedding = torch.flatten(

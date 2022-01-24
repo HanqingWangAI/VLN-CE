@@ -357,6 +357,7 @@ class WaypointPolicyCL(WaypointPolicy, Policy):
         model_config: Config,
     ) -> None:
         Policy.__init__(
+            self,
             ContrastiveNet(
                 observation_space=observation_space,
                 model_config=model_config,
