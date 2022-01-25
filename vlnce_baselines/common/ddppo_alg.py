@@ -277,7 +277,7 @@ class CWDDPPO(WDDPPO):
     def __init__(self, *args, offset_regularize_coef: float = 0, pano_entropy_coef: float = 1, offset_entropy_coef: float = 1, distance_entropy_coef: float = 1, **kwargs) -> None:
         super().__init__(*args, offset_regularize_coef=offset_regularize_coef, pano_entropy_coef=pano_entropy_coef, offset_entropy_coef=offset_entropy_coef, distance_entropy_coef=distance_entropy_coef, **kwargs)
         batch_size = 200
-        lmdb_features_dir = 'data/eccv_train_lmdb'
+        lmdb_features_dir = 'data/eccv_frame_lmdb_resnet18'
         self.dataset = FramesDataset(
                         lmdb_features_dir,
                         batch_size=200

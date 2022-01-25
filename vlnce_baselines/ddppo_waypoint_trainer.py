@@ -41,7 +41,7 @@ from habitat_extensions.utils import (
     generate_video,
     waypoint_observations_to_image,
 )
-from vlnce_baselines.common.ddppo_alg import WDDPPO
+from vlnce_baselines.common.ddppo_alg import WDDPPO, CWDDPPO
 from vlnce_baselines.common.env_utils import (
     construct_envs,
     construct_envs_auto_reset_false,
@@ -1009,7 +1009,7 @@ class CLDDPPOWaypointTrainer(DDPPOWaypointTrainer):
             nn.init.constant_(policy.critic.fc.bias, 0)
 
         ppo_cfg = config.RL.PPO
-        self.agent = WDDPPO(
+        self.agent = CWDDPPO(
             actor_critic=policy,
             clip_param=ppo_cfg.clip_param,
             ppo_epoch=ppo_cfg.ppo_epoch,
