@@ -10,5 +10,5 @@ bsub -n 16 -R "rusage[mem=8000,ngpus_excl_p=4]" -R "select[gpu_model0==NVIDIATIT
     --use_env \
     --nproc_per_node 4 \
     run.py \
-    --exp-config vlnce_baselines/config/r2r_waypoint/6-hpn-__.yaml \
+    --exp-config vlnce_baselines/config/r2r_waypoint/6.yaml \
     --run-type train
