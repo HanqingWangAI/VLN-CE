@@ -282,7 +282,7 @@ class CWDDPPO(WDDPPO):
                         lmdb_features_dir,
                         batch_size=200
                     )
-        self.diter = torch.utils.data.DataLoader(
+        diter = torch.utils.data.DataLoader(
                 self.dataset,
                 batch_size=batch_size,
                 shuffle=False,
@@ -291,6 +291,7 @@ class CWDDPPO(WDDPPO):
                 drop_last=True,  # drop last batch if smaller
                 num_workers=3,
             )
+        self.diter = iter(diter)
     
     def update(self, rollouts) -> Tuple[float, float, float]:
         advantages = self.get_advantages(rollouts)
