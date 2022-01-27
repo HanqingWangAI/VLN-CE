@@ -4,9 +4,9 @@ ENV_NAME: VLNCEWaypointEnv
 SIMULATOR_GPU_IDS: [0]
 TORCH_GPU_ID: 0
 NUM_ENVIRONMENTS: 8
-TENSORBOARD_DIR: data/tensorboard_dirs/hpn_baseline_finetune
-CHECKPOINT_FOLDER: data/checkpoints/hpn_baseline_finetune
-EVAL_CKPT_PATH_DIR: data/checkpoints/hpn_baseline_finetune
+TENSORBOARD_DIR: data/tensorboard_dirs/hpn_baseline_finetune_true
+CHECKPOINT_FOLDER: data/checkpoints/hpn_baseline_finetune_true
+EVAL_CKPT_PATH_DIR: data/checkpoints/hpn_baseline_finetune_true
 
 RL:
   POLICY:
