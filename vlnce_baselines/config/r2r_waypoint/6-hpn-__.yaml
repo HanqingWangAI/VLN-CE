@@ -16,6 +16,10 @@ RL:
   PPO:
     pano_entropy_coef: 1.5
 
+  DDPPO:
+    pretrained: True
+    pretrained_weights: data/HPN.pth
+
 MODEL:
   policy_name: WaypointPolicy
 

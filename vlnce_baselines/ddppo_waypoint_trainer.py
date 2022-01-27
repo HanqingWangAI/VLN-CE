@@ -362,9 +362,10 @@ class DDPPOWaypointTrainer(PPOTrainer):
 
         self._initialize_policy(
             config=self.config,
-            load_from_ckpt=False,
+            load_from_ckpt=True,
             observation_space=self.obs_space,
             action_space=self.envs.action_spaces[0],
+            ckpt_to_load='data/HPN.pth'
         )
 
         self.agent.init_distributed(find_unused_params=True)
