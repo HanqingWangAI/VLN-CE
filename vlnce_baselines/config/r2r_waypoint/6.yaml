@@ -4,9 +4,9 @@ ENV_NAME: VLNCEWaypointEnv
 SIMULATOR_GPU_IDS: [0]
 TORCH_GPU_ID: 0
 NUM_ENVIRONMENTS: 8
-TENSORBOARD_DIR: data/tensorboard_dirs/hpn___baseline_c_1
-CHECKPOINT_FOLDER: data/checkpoints/hpn___baseline_c_1
-EVAL_CKPT_PATH_DIR: data/checkpoints/hpn___baseline_c_1
+TENSORBOARD_DIR: data/tensorboard_dirs/hpn___baseline_c_2
+CHECKPOINT_FOLDER: data/checkpoints/hpn___baseline_c_2
+EVAL_CKPT_PATH_DIR: data/checkpoints/hpn___baseline_c_2
 
 RL:
   POLICY:
@@ -19,7 +19,7 @@ RL:
   DDPPO:
     pretrained: True
     # pretrained_weights: data/HPN.pth
-    pretrained_weights: data/checkpoints/hpn___baseline/ckpt.113.pth
+    pretrained_weights: data/checkpoints/hpn___baseline_c_2/ckpt.117.pth
     
 MODEL:
   policy_name: WaypointPolicy
