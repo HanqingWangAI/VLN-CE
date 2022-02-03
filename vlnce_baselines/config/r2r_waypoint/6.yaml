@@ -19,7 +19,7 @@ RL:
   DDPPO:
     pretrained: True
     # pretrained_weights: data/HPN.pth
-    pretrained_weights: data/checkpoints/hpn___baseline_c_2/ckpt.117.pth
+    pretrained_weights: data/checkpoints/hpn___baseline_c_1/ckpt.117.pth
     
 MODEL:
   policy_name: WaypointPolicy
