@@ -130,6 +130,8 @@ class PPO(nn.Module):
                     - dist_entropy * self.entropy_coef
                 )
 
+                total_loss = total_loss / self.repeat_num
+
                 self.before_backward(total_loss)
                 total_loss.backward()
                 self.after_backward(total_loss)

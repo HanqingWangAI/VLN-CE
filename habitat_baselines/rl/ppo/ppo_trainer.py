@@ -286,6 +286,8 @@ class PPOTrainer(BaseRLTrainer):
             )
         )
 
+        self.agent.repeat_num = repeat_num
+
         obs_space = self.obs_space
         if self._static_encoder:
             self._encoder = self.actor_critic.net.visual_encoder
@@ -850,6 +852,9 @@ class PPOTrainer(BaseRLTrainer):
                     action_loss_list.append(action_loss)
                     dist_entropy_list.append(dist_entropy)
 
+                    if self.should_end_early(t):
+                        break
+
                 if self._is_distributed:
                     self.num_rollouts_done_store.add("num_done", 1)
 
@@ -860,7 +865,7 @@ class PPOTrainer(BaseRLTrainer):
                 self.agent.before_step()
                 self.agent.optimizer.step()
                 self.agent.after_step()
-                
+
                 if ppo_cfg.use_linear_lr_decay:
                     lr_scheduler.step()  # type: ignore
 
