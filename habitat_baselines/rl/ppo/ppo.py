@@ -134,9 +134,9 @@ class PPO(nn.Module):
                 total_loss.backward()
                 self.after_backward(total_loss)
 
-                self.before_step()
-                self.optimizer.step()
-                self.after_step()
+                # self.before_step()
+                # self.optimizer.step()
+                # self.after_step()
 
                 value_loss_epoch += value_loss.item()
                 action_loss_epoch += action_loss.item()

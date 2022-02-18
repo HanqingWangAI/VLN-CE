@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 import torch
+import torch.distributed as distrib
 import tqdm
 from gym import spaces
 from torch import nn
@@ -222,9 +223,14 @@ class PPOTrainer(BaseRLTrainer):
                     )
                 )
 
+            self.world_rank = distrib.get_rank()
+            self.world_size = distrib.get_world_size()
+            num_gpu = len(self.config.VISIBLE_GPUS)
+            repeat_num = self.config.BATCHSIZE // (self.world_size * self.config.NUM_ENVIRONMENTS)
+            self.repeat_num = repeat_num
             self.config.defrost()
-            self.config.TORCH_GPU_ID = local_rank
-            self.config.SIMULATOR_GPU_ID = local_rank
+            self.config.TORCH_GPU_ID = local_rank % num_gpu
+            self.config.SIMULATOR_GPU_ID = local_rank % num_gpu
             # Multiply by the number of simulators to make sure they also get unique seeds
             self.config.TASK_CONFIG.SEED += (
                 torch.distributed.get_rank() * self.config.NUM_ENVIRONMENTS
@@ -696,7 +702,7 @@ class PPOTrainer(BaseRLTrainer):
         # worker detects it will be a straggler, it preempts itself!
         return (
             rollout_step
-            >= self.config.RL.PPO.num_steps * self.SHORT_ROLLOUT_THRESHOLD
+            >= self.repeat_num * self.SHORT_ROLLOUT_THRESHOLD
         ) and int(self.num_rollouts_done_store.get("num_done")) >= (
             self.config.RL.DDPPO.sync_frac * torch.distributed.get_world_size()
         )
@@ -796,46 +802,65 @@ class PPOTrainer(BaseRLTrainer):
                 count_steps_delta = 0
                 profiling_wrapper.range_push("rollouts loop")
 
+
+                value_loss_list = []
+                action_loss_list = []
+                dist_entropy_list = []
                 profiling_wrapper.range_push("_collect_rollout_step")
-                for buffer_index in range(self._nbuffers):
-                    self._compute_actions_and_step_envs(buffer_index)
-
-                for step in range(ppo_cfg.num_steps):
-                    is_last_step = (
-                        self.should_end_early(step + 1)
-                        or (step + 1) == ppo_cfg.num_steps
-                    )
-
+                for t in range(self.repeat_num):
                     for buffer_index in range(self._nbuffers):
-                        count_steps_delta += self._collect_environment_result(
-                            buffer_index
+                        self._compute_actions_and_step_envs(buffer_index)
+
+                    for step in range(ppo_cfg.num_steps):
+                        is_last_step = (
+                            # self.should_end_early(step + 1)
+                            False
+                            or (step + 1) == ppo_cfg.num_steps
                         )
 
-                        if (buffer_index + 1) == self._nbuffers:
-                            profiling_wrapper.range_pop()  # _collect_rollout_step
+                        for buffer_index in range(self._nbuffers):
+                            count_steps_delta += self._collect_environment_result(
+                                buffer_index
+                            )
 
-                        if not is_last_step:
                             if (buffer_index + 1) == self._nbuffers:
-                                profiling_wrapper.range_push(
-                                    "_collect_rollout_step"
-                                )
+                                profiling_wrapper.range_pop()  # _collect_rollout_step
 
-                            self._compute_actions_and_step_envs(buffer_index)
+                            if not is_last_step:
+                                if (buffer_index + 1) == self._nbuffers:
+                                    profiling_wrapper.range_push(
+                                        "_collect_rollout_step"
+                                    )
 
-                    if is_last_step:
-                        break
+                                self._compute_actions_and_step_envs(buffer_index)
 
-                profiling_wrapper.range_pop()  # rollouts loop
+                        if is_last_step:
+                            break
+
+                    profiling_wrapper.range_pop()  # rollouts loop
+
+                    
+
+                    (
+                        value_loss,
+                        action_loss,
+                        dist_entropy,
+                    ) = self._update_agent()
+                    value_loss_list.append(value_loss)
+                    action_loss_list.append(action_loss)
+                    dist_entropy_list.append(dist_entropy)
 
                 if self._is_distributed:
                     self.num_rollouts_done_store.add("num_done", 1)
 
-                (
-                    value_loss,
-                    action_loss,
-                    dist_entropy,
-                ) = self._update_agent()
+                value_loss = np.mean(value_loss_list)
+                action_loss = np.mean(action_loss_list)
+                dist_entropy = np.mean(dist_entropy_list)
 
+                self.agent.before_step()
+                self.agent.optimizer.step()
+                self.agent.after_step()
+                
                 if ppo_cfg.use_linear_lr_decay:
                     lr_scheduler.step()  # type: ignore
 
