@@ -21,7 +21,7 @@ SAVE_STATE.clear()
 
 
 # Default port to initialized the TCP store on
-DEFAULT_PORT = 8738
+DEFAULT_PORT = 18738
 DEFAULT_PORT_RANGE = 127
 # Default address of world rank 0
 DEFAULT_MASTER_ADDR = "127.0.0.1"
@@ -300,7 +300,7 @@ def init_distrib_slurm(
             os.environ.get("MASTER_PORT_RANGE", DEFAULT_PORT_RANGE)
         )
     master_addr = os.environ.get("MASTER_ADDR", DEFAULT_MASTER_ADDR)
-
+    print('address',master_addr,'port', master_port)
     tcp_store = distrib.TCPStore(  # type: ignore
         master_addr, master_port, world_size, world_rank == 0
     )
