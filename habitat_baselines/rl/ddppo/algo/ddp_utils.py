@@ -305,7 +305,7 @@ def init_distrib_slurm(
     master_addr = os.environ.get("MASTER_ADDR", DEFAULT_MASTER_ADDR)
     print('address',master_addr,'port', master_port)
     tcp_store = distrib.TCPStore(  # type: ignore
-        master_addr, master_port, world_size, local_rank == 0
+        master_addr, master_port, world_size, world_rank == 0
     )
     distrib.init_process_group(
         backend, store=tcp_store, rank=world_rank, world_size=world_size
