@@ -295,6 +295,7 @@ def init_distrib_slurm(
     local_rank, world_rank, world_size = get_distrib_size()
 
     master_port = int(os.environ.get("MASTER_PORT", DEFAULT_PORT))
+    print('get port', master_port)
     if SLURM_JOBID is not None:
         master_port += int(SLURM_JOBID) % int(
             os.environ.get("MASTER_PORT_RANGE", DEFAULT_PORT_RANGE)
@@ -302,7 +303,7 @@ def init_distrib_slurm(
     master_addr = os.environ.get("MASTER_ADDR", DEFAULT_MASTER_ADDR)
     print('address',master_addr,'port', master_port)
     tcp_store = distrib.TCPStore(  # type: ignore
-        master_addr, master_port, world_size, world_rank == 0
+        master_addr, master_port, world_size, local_rank == 0
     )
     distrib.init_process_group(
         backend, store=tcp_store, rank=world_rank, world_size=world_size
