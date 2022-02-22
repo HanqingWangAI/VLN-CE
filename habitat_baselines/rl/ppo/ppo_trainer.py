@@ -58,6 +58,31 @@ from habitat_baselines.utils.common import (
 from habitat_baselines.utils.env_utils import construct_envs
 
 
+def extract_instruction_tokens(
+    observations: List[Dict],
+    instruction_sensor_uuid: str,
+    tokens_uuid: str = "tokens",
+) -> Dict[str, Any]:
+    """Extracts instruction tokens from an instruction sensor if the tokens
+    exist and are in a dict structure.
+    """
+    if (
+        instruction_sensor_uuid not in observations[0]
+        or instruction_sensor_uuid == "pointgoal_with_gps_compass"
+    ):
+        return observations
+    for i in range(len(observations)):
+        if (
+            isinstance(observations[i][instruction_sensor_uuid], dict)
+            and tokens_uuid in observations[i][instruction_sensor_uuid]
+        ):
+            observations[i][instruction_sensor_uuid] = observations[i][
+                instruction_sensor_uuid
+            ]["tokens"]
+        else:
+            break
+    return observations
+
 @baseline_registry.register_trainer(name="ddppo")
 @baseline_registry.register_trainer(name="ppo")
 class PPOTrainer(BaseRLTrainer):
@@ -319,6 +344,9 @@ class PPOTrainer(BaseRLTrainer):
         self.rollouts.to(self.device)
 
         observations = self.envs.reset()
+        observations = extract_instruction_tokens(
+        observations, self.config.TASK_CONFIG.TASK.INSTRUCTION_SENSOR_UUID
+        )
         batch = batch_obs(
             observations, device=self.device, cache=self._obs_batching_cache
         )
@@ -500,6 +528,9 @@ class PPOTrainer(BaseRLTrainer):
         self.env_time += time.time() - t_step_env
 
         t_update_stats = time.time()
+        observations = extract_instruction_tokens(
+        observations, self.config.TASK_CONFIG.TASK.INSTRUCTION_SENSOR_UUID
+        )
         batch = batch_obs(
             observations, device=self.device, cache=self._obs_batching_cache
         )
@@ -953,6 +984,9 @@ class PPOTrainer(BaseRLTrainer):
         self.actor_critic = self.agent.actor_critic
 
         observations = self.envs.reset()
+        observations = extract_instruction_tokens(
+        observations, self.config.TASK_CONFIG.TASK.INSTRUCTION_SENSOR_UUID
+        )
         batch = batch_obs(
             observations, device=self.device, cache=self._obs_batching_cache
         )
@@ -1044,6 +1078,9 @@ class PPOTrainer(BaseRLTrainer):
             observations, rewards_l, dones, infos = [
                 list(x) for x in zip(*outputs)
             ]
+            observations = extract_instruction_tokens(
+            observations, self.config.TASK_CONFIG.TASK.INSTRUCTION_SENSOR_UUID
+            )
             batch = batch_obs(
                 observations,
                 device=self.device,
