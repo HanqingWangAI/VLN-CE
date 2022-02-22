@@ -8,7 +8,7 @@ export MAGNUM_LOG=quiet
 
 python -u -m torch.distributed.launch \
     --use_env \
-    --nproc_per_node 16 \
+    --nproc_per_node 1 \
     run.py \
     --exp-config vlnce_baselines/config/r2r_waypoint/7.yaml \
     --run-type train
