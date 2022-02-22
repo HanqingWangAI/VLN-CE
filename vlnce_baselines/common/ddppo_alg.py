@@ -209,11 +209,7 @@ class CMADDPPO(DDPPO):
                     actions_batch,
                 )
 
-                entropy_loss = (
-                    self.pano_entropy_coef * entropy["pano"]
-                    + self.offset_entropy_coef * entropy["offset"]
-                    + self.distance_entropy_coef * entropy["distance"]
-                ).mean() * self.entropy_coef
+                entropy_loss = entropy.mean() * self.entropy_coef
 
                 ratio = torch.exp(
                     action_log_probs - old_action_log_probs_batch
