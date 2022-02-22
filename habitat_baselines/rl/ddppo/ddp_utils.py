@@ -25,7 +25,7 @@ SAVE_STATE.clear()
 DEFAULT_PORT = 19739
 DEFAULT_PORT_RANGE = 127
 # Default address of world rank 0
-DEFAULT_MASTER_ADDR = "127.0.0.1"
+DEFAULT_MASTER_ADDR = "127.0.0.3"
 
 SLURM_JOBID = os.environ.get("SLURM_JOB_ID", None)
 RESUME_STATE_BASE_NAME = ".habitat-resume-state"

@@ -64,7 +64,7 @@ def run_exp(exp_config: str, run_type: str, opts=None) -> None:
             if i != len(config.EVAL.VISIBLE_GPUS):
                 gpus += ','
     os.environ['CUDA_VISIBLE_DEVICES'] = gpus
-    # os.environ['MASTER_PORT'] = str(config.MASTER_PORT)
+    os.environ['MASTER_PORT'] = str(config.MASTER_PORT)
 
     logger.info(f"config: {config}")
     logdir = "/".join(config.LOG_FILE.split("/")[:-1])
