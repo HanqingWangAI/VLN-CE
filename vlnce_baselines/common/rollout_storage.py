@@ -310,7 +310,7 @@ class CMARolloutStorage(RolloutStorage):
                 num_envs,
                 *observation_space.spaces[sensor].shape,
             )
-            print(sensor, self.observations[sensor].shape)
+            # print(sensor, self.observations[sensor].shape)
 
         self.recurrent_hidden_states = torch.zeros(
             num_steps + 1,

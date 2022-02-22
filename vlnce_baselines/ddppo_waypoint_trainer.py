@@ -996,6 +996,19 @@ class DDPPOCMA(PPOTrainer):
 
         super().__init__(config)
 
+    def _set_observation_space(self, envs, batch, instruction_uuid):
+        obs_space = apply_obs_transforms_obs_space(
+            envs.observation_spaces[0], self.obs_transforms
+        )
+
+        obs_space.spaces[instruction_uuid] = spaces.Box(
+            low=np.finfo(np.float).min,
+            high=np.finfo(np.float).max,
+            shape=tuple(batch[instruction_uuid].shape[1:]),
+            dtype=np.float,
+        )
+
+        self.obs_space = obs_space
 
     def _initialize_policy(
         self,
@@ -1257,7 +1270,7 @@ class DDPPOCMA(PPOTrainer):
         batch = apply_obs_transforms_batch(batch, self.obs_transforms)
         batch["rgb_history"] = batch["rgb"][:, 0].detach().clone() * 0.0
         batch["depth_history"] = batch["depth"][:, 0].detach().clone() * 0.0
-        # self._set_observation_space(self.envs, batch, instruction_uuid)
+        self._set_observation_space(self.envs, batch, instruction_uuid)
 
         self._initialize_policy(
             config=self.config,
