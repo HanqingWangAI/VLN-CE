@@ -285,7 +285,7 @@ class RNNStateEncoder(nn.Module):
         r"""Forward for a non-sequence input"""
 
         hidden_states = torch.where(
-            masks.view(1, -1, 1), hidden_states, hidden_states.new_zeros(())
+            masks.view(1, -1, 1).bool(), hidden_states, hidden_states.new_zeros(())
         )
 
         x, hidden_states = self.rnn(
