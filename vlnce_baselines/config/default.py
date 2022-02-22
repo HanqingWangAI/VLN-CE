@@ -204,7 +204,7 @@ _C.RL.PPO.offset_regularize_coef = 0.1146
 # ----------------------------------------------------------------------------
 _C.RL.DDPPO = CN()
 _C.RL.DDPPO.sync_frac = 0.6
-_C.RL.DDPPO.distrib_backend = "NCCL"  # or GLOO
+_C.RL.DDPPO.distrib_backend = "GLOO"  # or GLOO
 _C.RL.DDPPO.reset_critic = True
 _C.RL.DDPPO.start_from_requeue = False
 _C.RL.DDPPO.requeue_path = "data/interrupted_state.pth"
