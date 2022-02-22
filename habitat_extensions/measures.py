@@ -221,10 +221,11 @@ class WaypointRewardMeasure(Measure):
         self, *args: Any, action: Action, task: EmbodiedTask, **kwargs: Any
     ) -> None:
         # print('action is', action)
-        if action['action'] == 1 or action['action'] == 0:
-            reward = self._slack_reward
-        else:
-            reward = self._slack_reward * 0.1
+        # if action['action'] == 1 or action['action'] == 0:
+        #     reward = self._slack_reward
+        # else:
+        #     reward = self._slack_reward * 0.1
+        reward = 0
         # reward = self._get_scaled_slack_reward(action)
         reward += self._progress_to_goal(task)
         reward += (
