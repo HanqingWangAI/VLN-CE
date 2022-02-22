@@ -1132,7 +1132,7 @@ class DDPPOCMA(PPOTrainer):
         #             else variances["offset"]
         #         )
 
-        outputs = self.envs.step(actions)
+        outputs = self.envs.step([a[0].item() for a in actions])
         observations, rewards, dones, infos = [list(x) for x in zip(*outputs)]
 
         env_time += time.time() - t_step_env
