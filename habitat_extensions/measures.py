@@ -220,6 +220,8 @@ class WaypointRewardMeasure(Measure):
     def update_metric(
         self, *args: Any, action: Action, task: EmbodiedTask, **kwargs: Any
     ) -> None:
+        print('action is', action)
+        
         reward = self._slack_reward
         # reward = self._get_scaled_slack_reward(action)
         reward += self._progress_to_goal(task)
