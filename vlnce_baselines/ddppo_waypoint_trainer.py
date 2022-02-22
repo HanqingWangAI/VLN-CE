@@ -1074,9 +1074,10 @@ class DDPPOCMA(PPOTrainer):
                 k: v[rollouts.step] for k, v in rollouts.observations.items()
             }
 
-            step_prev_actions = {
-                k: v[rollouts.step] for k, v in rollouts.prev_actions.items()
-            }
+            # step_prev_actions = {
+            #     k: v[rollouts.step] for k, v in rollouts.prev_actions.items()
+            # }
+            step_prev_actions = rollouts.prev_actions[rollouts.step]
 
             outputs = self.policy.act(
                 step_observation,
