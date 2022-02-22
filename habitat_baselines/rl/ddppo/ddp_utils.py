@@ -1,5 +1,6 @@
 import functools
 import os
+from pty import master_open
 import signal
 import subprocess
 import threading
@@ -21,10 +22,10 @@ SAVE_STATE.clear()
 
 
 # Default port to initialized the TCP store on
-DEFAULT_PORT = 8738
+DEFAULT_PORT = 18738
 DEFAULT_PORT_RANGE = 127
 # Default address of world rank 0
-DEFAULT_MASTER_ADDR = "127.0.0.2"
+DEFAULT_MASTER_ADDR = "127.0.0.1"
 
 SLURM_JOBID = os.environ.get("SLURM_JOB_ID", None)
 RESUME_STATE_BASE_NAME = ".habitat-resume-state"
@@ -252,7 +253,8 @@ def init_distrib_slurm(
 
     local_rank, world_rank, world_size = get_distrib_size()
 
-    master_port = int(os.environ.get("MASTER_PORT", DEFAULT_PORT))
+    # master_port = int(os.environ.get("MASTER_PORT", DEFAULT_PORT))
+    master_port = DEFAULT_PORT
     if SLURM_JOBID is not None:
         master_port += int(SLURM_JOBID) % int(
             os.environ.get("MASTER_PORT_RANGE", DEFAULT_PORT_RANGE)
