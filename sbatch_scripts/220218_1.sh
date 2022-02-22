@@ -10,5 +10,5 @@ python -u -m torch.distributed.launch \
     --use_env \
     --nproc_per_node 4 \
     run.py \
-    --exp-config vlnce_baselines/config/r2r_waypoint/6.yaml \
+    --exp-config vlnce_baselines/config/r2r_waypoint/7.yaml \
     --run-type train
