@@ -52,6 +52,20 @@ def run_exp(exp_config: str, run_type: str, opts=None) -> None:
         opts: list of strings of additional config options.
     """
     config = get_config(exp_config, opts)
+    gpus = ''
+    if run_type == 'train':
+        for i, g in enumerate(config.VISIBLE_GPUS):
+            gpus += '{:d}'.format(g)
+            if i != len(config.VISIBLE_GPUS):
+                gpus += ','
+    else:
+        for i, g in enumerate(config.EVAL.VISIBLE_GPUS):
+            gpus += '{:d}'.format(g)
+            if i != len(config.EVAL.VISIBLE_GPUS):
+                gpus += ','
+    os.environ['CUDA_VISIBLE_DEVICES'] = gpus
+    os.environ['MASTER_PORT'] = str(config.MASTER_PORT)
+    
     logger.info(f"config: {config}")
     logdir = "/".join(config.LOG_FILE.split("/")[:-1])
     if logdir:
