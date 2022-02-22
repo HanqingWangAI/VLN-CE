@@ -1195,9 +1195,8 @@ class DDPPOCMA(PPOTrainer):
             last_observation = {
                 k: v[rollouts.step] for k, v in rollouts.observations.items()
             }
-            prev_actions = {
-                k: v[rollouts.step] for k, v in rollouts.prev_actions.items()
-            }
+            prev_actions = rollouts.prev_actions[rollouts.step]
+
             next_value = self.policy.get_value(
                 last_observation,
                 rollouts.recurrent_hidden_states[rollouts.step],
