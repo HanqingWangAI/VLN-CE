@@ -5,9 +5,9 @@ SIMULATOR_GPU_IDS: [0]
 TORCH_GPU_ID: 0
 BATCHSIZE: 128
 NUM_ENVIRONMENTS: 16
-TENSORBOARD_DIR: data/tensorboard_dirs/220222_3
-CHECKPOINT_FOLDER: data/checkpoints/220222_3
-EVAL_CKPT_PATH_DIR: data/checkpoints/220222_3
+TENSORBOARD_DIR: data/tensorboard_dirs/220222_4
+CHECKPOINT_FOLDER: data/checkpoints/220222_4
+EVAL_CKPT_PATH_DIR: data/checkpoints/220222_4
 VISIBLE_GPUS: [0,1,2,3]
 RL:
   POLICY:
@@ -16,7 +16,7 @@ RL:
 
   PPO:
     # pano_entropy_coef: 1.5
-    entropy_coef: 1.0
+    entropy_coef: 0.01
 
 
 
