@@ -1469,7 +1469,7 @@ class DDPPOCMA(PPOTrainer):
                 if self.world_rank != 0:
                     continue
 
-                count_steps += stats[6].item()
+                count_steps += stats[3].item()
                 stats /= self.world_size
 
                 num_rollouts_done_store.set("num_done", "0")
