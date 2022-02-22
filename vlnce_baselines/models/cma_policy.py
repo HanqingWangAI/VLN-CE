@@ -19,10 +19,38 @@ from vlnce_baselines.models.encoders.instruction_encoder import (
     InstructionEncoder,
 )
 from vlnce_baselines.models.policy import ILPolicy
-
+from habitat_baselines.rl.ppo.policy import Policy
 
 @baseline_registry.register_policy
 class CMAPolicy(ILPolicy):
+    def __init__(
+        self,
+        observation_space: Space,
+        action_space: Space,
+        model_config: Config,
+    ) -> None:
+        super().__init__(
+            CMANet(
+                observation_space=observation_space,
+                model_config=model_config,
+                num_actions=action_space.n,
+            ),
+            action_space.n,
+        )
+
+    @classmethod
+    def from_config(
+        cls, config: Config, observation_space: Space, action_space: Space
+    ):
+        return cls(
+            observation_space=observation_space,
+            action_space=action_space,
+            model_config=config.MODEL,
+        )
+
+
+@baseline_registry.register_policy
+class CMAPolicyRL(Policy):
     def __init__(
         self,
         observation_space: Space,
