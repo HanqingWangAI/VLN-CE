@@ -15,7 +15,10 @@ RL:
       ENABLED_TRANSFORMS: []
 
   PPO:
-    pano_entropy_coef: 1.5
+    # pano_entropy_coef: 1.5
+    entropy_coef: 0.1
+
+
 
   DDPPO:
     pretrained: False
