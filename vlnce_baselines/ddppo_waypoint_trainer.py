@@ -1226,13 +1226,14 @@ class DDPPOCMA(PPOTrainer):
 
         self.world_rank = distrib.get_rank()
         self.world_size = distrib.get_world_size()
+        num_gpu = len(self.config.VISIBLE_GPUS)
 
         if self.world_rank == 0:
             os.makedirs(self.config.CHECKPOINT_FOLDER, exist_ok=True)
 
         self.config.defrost()
-        self.config.TORCH_GPU_ID = self.local_rank
-        self.config.SIMULATOR_GPU_IDS = [self.local_rank]
+        self.config.TORCH_GPU_ID = self.local_rank % num_gpu
+        self.config.SIMULATOR_GPU_IDS = [self.local_rank % num_gpu]
         # Multiply by NUM_ENVIRONMENTS to ensure simulators get unique seeds
         self.config.TASK_CONFIG.SEED += (
             self.world_rank * self.config.NUM_ENVIRONMENTS
