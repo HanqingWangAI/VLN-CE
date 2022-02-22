@@ -9,7 +9,7 @@ export MAGNUM_LOG=quiet
 python -u -m torch.distributed.launch \
     --use_env \
     --nproc_per_node 4 \
-    --master_port 27501 \
+    --master_port 67501 \
     run.py \
     --exp-config vlnce_baselines/config/r2r_waypoint/7.yaml \
     --run-type train
