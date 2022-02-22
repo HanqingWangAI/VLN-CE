@@ -1100,10 +1100,7 @@ class DDPPOCMA(PPOTrainer):
         pth_time += time.time() - t_sample_action
         t_step_env = time.time()
 
-        obs_history = {
-            "rgb": torch.zeros_like(step_observation["rgb"][:, 0]),
-            "depth": torch.zeros_like(step_observation["depth"][:, 0]),
-        }
+        
 
         # logging_predictions = defaultdict(list)
         # for i in range(self.envs.num_envs):
@@ -1146,9 +1143,6 @@ class DDPPOCMA(PPOTrainer):
         batch = apply_obs_transforms_batch(batch, self.obs_transforms)
         batch = {k: v.float() for k, v in batch.items()}
 
-        # insert the observation histories
-        batch["rgb_history"] = obs_history["rgb"]
-        batch["depth_history"] = obs_history["depth"]
 
         rewards = torch.tensor(
             rewards, dtype=torch.float, device=self.device
