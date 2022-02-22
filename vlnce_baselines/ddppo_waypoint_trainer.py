@@ -1263,8 +1263,6 @@ class DDPPOCMA(PPOTrainer):
         batch = batch_obs(observations, device=self.device)
         self.obs_transforms = get_active_obs_transforms(self.config)
         batch = apply_obs_transforms_batch(batch, self.obs_transforms)
-        batch["rgb_history"] = batch["rgb"][:, 0].detach().clone() * 0.0
-        batch["depth_history"] = batch["depth"][:, 0].detach().clone() * 0.0
         self._set_observation_space(self.envs, batch, instruction_uuid)
 
         self._initialize_policy(
@@ -1574,7 +1572,7 @@ class DDPPOCMA(PPOTrainer):
         prev_actions: Dict[str, Tensor],
         not_done_masks: Tensor,
         batch: Dict[str, Tensor],
-        obs_history: Dict[str, Tensor],
+        # obs_history: Dict[str, Tensor],
     ) -> Tuple[
         VectorEnv,
         Tensor,
