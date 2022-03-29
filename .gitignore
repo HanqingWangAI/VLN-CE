@@ -146,5 +146,5 @@ stats_*.json
 # custom slurm utils
 # sbatch_scripts
 
-/data/
+data
 /logs/
